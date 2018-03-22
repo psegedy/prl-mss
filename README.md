@@ -1,6 +1,6 @@
 # Merge-splitting sort
 Parallel sorting algorithm
-Project in PRL class at [FIT VUT](www.fit.vutbr.cz)
+Project in PRL class at [FIT VUT](http://www.fit.vutbr.cz)
 
 # Requirements
 OpenMPI library
