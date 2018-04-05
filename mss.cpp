@@ -38,22 +38,22 @@ int main(int argc, char *argv[])
     // processor with rank 0 read all values
     if(rank == 0) {
         int i = 0;
+        int tmp = 0;
         fstream f;
         arr = (int*) malloc(numbers * sizeof(int));
 
         // initialize array with 256
-        cout << "nums: " <<  numbers << endl;
         for (int i = 0; i < numbers; ++i)
             arr[i] = 256;
 
         // read file
         f.open("numbers", ios::in);
         while(f.good()) {
-            arr[i] = f.get();
-            if(!f.good()) {
-                arr[i] = 256;
+            tmp = f.get();
+            if(!f.good())
                 break;          // break on EOF
-            }
+            else
+                arr[i] = tmp;
             i++;
         }
         f.close();
