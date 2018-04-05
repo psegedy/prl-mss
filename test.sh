@@ -5,15 +5,6 @@
 numbers=$1
 cpus=$2
 
-# check if number of numbers is divisible by number of CPUs
-if ((numbers % cpus)); then
-    # use smaller number of CPUs
-    while ((numbers % cpus)); do
-        ((cpus--))
-    done
-    # echo "CPUs = $cpus"
-fi
-
 # compile
 mpic++ -g --prefix /usr/local/share/OpenMPI -o mss mss.cpp
 

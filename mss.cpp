@@ -6,6 +6,7 @@
 #include <fstream>
 #include <cstdlib>
 #include <algorithm>
+#include <chrono>
 
 using namespace std;
 
@@ -13,7 +14,8 @@ int main(int argc, char *argv[])
 {
     int numprocs;               // number of processors
     int rank;                   // rank
-    int numbers = atoi(argv[1]); // number of numbers on input
+    int numbers_in = atoi(argv[1]); // number of numbers on input
+    int numbers = numbers_in;       // for case that (numbers % numprocs != 0)
     MPI_Status stat;            // struct- obsahuje kod- source, tag, error
 
     //MPI INIT
@@ -21,10 +23,11 @@ int main(int argc, char *argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    if (numbers % numprocs) {
-        cerr << "Number of numbers is not divisible by number of CPUs" << endl;
-        return 1;
-    }
+    // if number of numbers is not divisible by numprocs
+    // increase number of numbers and initialize
+    // it with 256 later (+1 than max value)
+    while(numbers % numprocs)
+        numbers++;
 
     int *arr = NULL;
     // int myarr[numbers/numprocs];
@@ -34,18 +37,27 @@ int main(int argc, char *argv[])
 
     // processor with rank 0 read all values
     if(rank == 0) {
-        int i;
-        arr = (int*) malloc(numbers * sizeof(int) );
+        int i = 0;
         fstream f;
-        f.open("numbers", ios::in);
+        arr = (int*) malloc(numbers * sizeof(int));
+
+        // initialize array with 256
+        cout << "nums: " <<  numbers << endl;
+        for (int i = 0; i < numbers; ++i)
+            arr[i] = 256;
 
         // read file
+        f.open("numbers", ios::in);
         while(f.good()) {
             arr[i] = f.get();
-            if(!f.good()) break;  // break on EOF
+            if(!f.good()) {
+                arr[i] = 256;
+                break;          // break on EOF
+            }
             i++;
         }
         f.close();
+        // print numbers
         for (int i = 0; i < numbers; ++i) {
             cout << arr[i] << " ";
         }
@@ -60,11 +72,13 @@ int main(int argc, char *argv[])
     int even_lim = 2*((numprocs-1)/2);
     // Merge-splitting sort algorithm
     // sequential sort for each processor
+
+    auto start = chrono::system_clock::now();
     sort(my_arr, my_arr + (numbers/numprocs));
 
     // merging
     for (int i = 0; i < numprocs/2; ++i) {
-        // odd
+        // even
         if (rank%2 == 0 && rank < odd_lim) {
             // send my array to right neighbor
             // wait for arr from right neighbor
@@ -76,14 +90,13 @@ int main(int argc, char *argv[])
             MPI_Recv(neigh_arr, (numbers/numprocs), MPI_INT, rank-1, 0, MPI_COMM_WORLD, &stat);
             // merge mine and neighbors data
             merge(my_arr, my_arr+(numbers/numprocs), neigh_arr, neigh_arr+(numbers/numprocs), merged_arr);
-            memcpy(my_arr, merged_arr, (numbers/numprocs)*sizeof(int));
-            memcpy(neigh_arr, merged_arr + (numbers/numprocs), (numbers/numprocs)*sizeof(int));
-            // send lower to neighbor and swap mine for neighbor's
-            MPI_Send(my_arr, (numbers/numprocs), MPI_INT, rank-1, 0, MPI_COMM_WORLD);
-            memcpy(my_arr, neigh_arr, (numbers/numprocs)*sizeof(int));
+            memcpy(neigh_arr, merged_arr, (numbers/numprocs)*sizeof(int));
+            memcpy(my_arr, merged_arr + (numbers/numprocs), (numbers/numprocs)*sizeof(int));
+            // send lower to neighbor
+            MPI_Send(neigh_arr, (numbers/numprocs), MPI_INT, rank-1, 0, MPI_COMM_WORLD);
         }
 
-        // even
+        // odd
         if (rank%2 && rank < even_lim) {
             MPI_Send(my_arr, (numbers/numprocs), MPI_INT, rank+1, 0, MPI_COMM_WORLD);
             MPI_Recv(my_arr, (numbers/numprocs), MPI_INT, rank+1, 0, MPI_COMM_WORLD, &stat);
@@ -93,20 +106,25 @@ int main(int argc, char *argv[])
             MPI_Recv(neigh_arr, (numbers/numprocs), MPI_INT, rank-1, 0, MPI_COMM_WORLD, &stat);
             // merge mine and neighbors data
             merge(my_arr, my_arr+(numbers/numprocs), neigh_arr, neigh_arr+(numbers/numprocs), merged_arr);
-            memcpy(my_arr, merged_arr, (numbers/numprocs)*sizeof(int));
-            memcpy(neigh_arr, merged_arr + (numbers/numprocs), (numbers/numprocs)*sizeof(int));
-            // send lower to neighbor and swap mine for neighbor's
-            MPI_Send(my_arr, (numbers/numprocs), MPI_INT, rank-1, 0, MPI_COMM_WORLD);
-            memcpy(my_arr, neigh_arr, (numbers/numprocs)*sizeof(int));
+            memcpy(neigh_arr, merged_arr, (numbers/numprocs)*sizeof(int));
+            memcpy(my_arr, merged_arr + (numbers/numprocs), (numbers/numprocs)*sizeof(int));
+            // send lower to neighbor
+            MPI_Send(neigh_arr, (numbers/numprocs), MPI_INT, rank-1, 0, MPI_COMM_WORLD);
         }
     }
+
+    auto end = chrono::system_clock::now();
 
     // Gather values from all processors to processor 0
     MPI_Gather(my_arr, (numbers/numprocs), MPI_INT, arr, (numbers/numprocs), MPI_INT, 0, MPI_COMM_WORLD);
 
-    if (rank == 0)
-        for (int i = 0; i < numbers; ++i)
+    if (rank == 0) {
+        for (int i = 0; i < numbers_in; ++i)
             cout << arr[i] << endl;
+
+        chrono::duration<double, std::milli> elapsed_milis = end-start;
+        cout << "elapsed time: " << elapsed_milis.count() << "ms" << endl;
+    }
 
     // free memory
     if (rank == 0)
