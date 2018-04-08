@@ -9,7 +9,7 @@ cpus=$2
 mpic++ -g --prefix /usr/local/share/OpenMPI -o mss mss.cpp
 
 # make file with random numbers
-dd if=/dev/random bs=1 count=$numbers of=numbers &> /dev/null
+dd if=/dev/urandom bs=1 count=$numbers of=numbers &> /dev/null
 
 # run
 mpirun --prefix /usr/local/share/OpenMPI -np $cpus mss $numbers

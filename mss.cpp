@@ -6,7 +6,7 @@
 #include <fstream>
 #include <cstdlib>
 #include <algorithm>
-#include <chrono>
+// #include <chrono>
 
 using namespace std;
 
@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
         }
         f.close();
         // print numbers
-        for (int i = 0; i < numbers; ++i) {
+        for (int i = 0; i < numbers_in; ++i) {
             cout << arr[i] << " ";
         }
         cout << endl;
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
     // Merge-splitting sort algorithm
     // sequential sort for each processor
 
-    auto start = chrono::system_clock::now();
+    // auto start = chrono::system_clock::now();
     sort(my_arr, my_arr + (numbers/numprocs));
 
     // merging
@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    auto end = chrono::system_clock::now();
+    // auto end = chrono::system_clock::now();
 
     // Gather values from all processors to processor 0
     MPI_Gather(my_arr, (numbers/numprocs), MPI_INT, arr, (numbers/numprocs), MPI_INT, 0, MPI_COMM_WORLD);
@@ -122,8 +122,8 @@ int main(int argc, char *argv[])
         for (int i = 0; i < numbers_in; ++i)
             cout << arr[i] << endl;
 
-        chrono::duration<double, std::milli> elapsed_milis = end-start;
-        cout << "elapsed time: " << elapsed_milis.count() << "ms" << endl;
+        // chrono::duration<double, std::milli> elapsed_milis = end-start;
+        // cout << "elapsed time: " << elapsed_milis.count() << "ms" << endl;
     }
 
     // free memory
